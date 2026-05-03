@@ -3,4 +3,4 @@
 	url = git@github.com:eulennest/vaultwarden.git
 [submodule "vendor/matrix-dotnet-sdk"]
 	path = vendor/matrix-dotnet-sdk
-	url = git@github.com:SlimeQ/matrix-dotnet-sdk.git
+	url = https://github.com/SlimeQ/matrix-dotnet-sdk.git
