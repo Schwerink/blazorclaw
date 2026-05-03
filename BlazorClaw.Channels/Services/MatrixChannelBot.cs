@@ -1,4 +1,8 @@
+using BlazorClaw.Core.Data;
+using BlazorClaw.Core.Security.Vault;
+using BlazorClaw.Core.Services;
 using BlazorClaw.Core.Sessions;
+using BlazorClaw.Core.Utils;
 using Matrix.Sdk;
 using Matrix.Sdk.Core.Domain.RoomEvent;
 using Microsoft.Extensions.AI;
@@ -7,26 +11,86 @@ using Microsoft.Extensions.Logging;
 namespace BlazorClaw.Channels.Services
 {
 
-    public class MatrixChannelBot(MatrixClientFactory factory, ILogger<MatrixChannelBot> logger) : AbstractConfigChannelBot<MatrixBotEntry>("Matrix")
+    public class MatrixChannelBot(PathHelper pathHelper, SystemJsonVaultProvider vault, MatrixClientFactory factory, ILogger<MatrixChannelBot> logger) : AbstractConfigChannelBot<MatrixBotEntry>("Matrix")
     {
         internal IMatrixClient? Client { get; private set; }
-        public override Task SendChannelAsync(IChannelSession channelId, ChatMessage message, CancellationToken cancellationToken = default)
-        {
-            return Client?.SendMessageAsync(channelId.ChannelId, message.Text) ?? Task.CompletedTask;
-        }
 
         public override Task SendUserAsync(IChannelSession channelId, ChatMessage message, CancellationToken cancellationToken = default)
         {
             return Client?.SendMessageAsync(channelId.ChannelId, message.Text) ?? Task.CompletedTask;
         }
 
+        public override async Task SendChannelAsync(IChannelSession channelId, ChatMessage message, CancellationToken cancellationToken = default)
+        {
+            if (Client == null) throw new InvalidOperationException("Not configured");
+            var content = message.Text;
+
+            foreach (var item in message.Contents)
+            {
+                if (item is UriContent uri)
+                {
+                    var uriStr = uri.Uri.ToString();
+                    var filename = Path.GetFileName(uriStr);
+                    var data = await GetMediaFileAsync(uriStr);
+                    if (data == null) continue;
+
+                    else if (uri.MediaType.StartsWith("image/"))
+                    {
+                        await Client.SendImageAsync(channelId.ChannelId, filename, data);
+                        content = null;
+                    }
+                    else
+                    {
+                        await Client.SendFileAsync(channelId.ChannelId, filename, data);
+                        content = null;
+                    }
+                }
+
+            }
+
+            if (!string.IsNullOrWhiteSpace(content))
+            {
+                var i = 0;
+                foreach (var item in SplitMessageHybrid(content))
+                {
+                    if (i++ > 0) await Task.Delay(1000, cancellationToken);
+                    await Client.SendMessageAsync(channelId.ChannelId, item);
+                }
+            }
+        }
+
+        protected async Task<byte[]?> GetMediaFileAsync(string url)
+        {
+            var t = await pathHelper.GetMediaFileAsync(url);
+            if (t != null)
+            {
+                using var ms = t.Item1;
+                return await ms.ReadToBytesAsync();
+            }
+            return null;
+        }
+
         public override async Task StartAsync(CancellationToken cancellationToken = default)
         {
             if (Client == null || Config == null) throw new InvalidOperationException("Not configured");
             var homeserver = new Uri(Config.Homeserver ?? "https://matrix.org", UriKind.Absolute);
+
+            var token = await vault.GetSecretAsync($"Matrix_{Config.UserId}");
             var userId = Config.UserId;
-            var password = Config.Password;
-            await Client.LoginAsync(homeserver, userId, password, "BlazorClawBot");
+
+            if (token != null)
+            {
+                await Client.LoginAsync(homeserver, token.Secret, userId);
+            }
+            else
+            {
+                var password = Config.Password;
+                var ret = await Client.LoginAsync(homeserver, userId, password, BotId);
+                if (ret != null)
+                {
+                    await vault.SetSecretAsync($"Matrix_{Config.UserId}", ret.AccessToken);
+                }
+            }
             Client.Start();
         }
 
@@ -47,16 +111,28 @@ namespace BlazorClaw.Channels.Services
         private async void HandleUpdate(object? sender, MatrixRoomEventsEventArgs eventArgs)
         {
             if (sender is not IMatrixClient client) return;
-            foreach (var roomEvent in eventArgs.MatrixRoomEvents)
+            try
             {
-                if (client.UserId != roomEvent.SenderUserId)
+                foreach (var roomEvent in eventArgs.MatrixRoomEvents)
                 {
-                    if (roomEvent is TextMessageEvent textMessageEvent)
+                    if (client.UserId != roomEvent.SenderUserId)
                     {
-                        logger.LogInformation("Matrix received message in {RoomId}", roomEvent.RoomId);
-                        await ProcessMatrixMessage(roomEvent.RoomId, roomEvent.SenderUserId, textMessageEvent.Message);
+                        if (roomEvent is TextMessageEvent textMessageEvent)
+                        {
+                            logger.LogInformation("Matrix received message in {RoomId}", roomEvent.RoomId);
+                            await ProcessMatrixMessage(roomEvent.RoomId, roomEvent.SenderUserId, textMessageEvent.Message);
+                        }
+                        else if (roomEvent is CreateRoomEvent crRoomEvent)
+                        {
+                            logger.LogInformation("Matrix received CreateRoom event in {RoomId}", crRoomEvent.RoomId);
+                            await client.JoinTrustedPrivateRoomAsync(crRoomEvent.RoomId);
+                        }
                     }
                 }
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Error: {Messsage}", ex.Message);
             }
         }
 
