@@ -1,4 +1,3 @@
-using BlazorClaw.Core.Data;
 using BlazorClaw.Core.Security.Vault;
 using BlazorClaw.Core.Services;
 using BlazorClaw.Core.Sessions;
@@ -37,15 +36,12 @@ namespace BlazorClaw.Channels.Services
                     else if (uri.MediaType.StartsWith("image/"))
                     {
                         await Client.SendImageAsync(channelId.ChannelId, filename, data);
-                        content = null;
                     }
                     else
                     {
                         await Client.SendFileAsync(channelId.ChannelId, filename, data);
-                        content = null;
                     }
                 }
-
             }
 
             if (!string.IsNullOrWhiteSpace(content))
