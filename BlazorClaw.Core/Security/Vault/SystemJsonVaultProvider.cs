@@ -5,7 +5,7 @@ using System.Text.Json;
 namespace BlazorClaw.Core.Security.Vault;
 
 public class SystemJsonVaultProvider(
-    ILogger<SystemJsonVaultProvider> logger) : IVaultProvider
+    ILogger<SystemJsonVaultProvider> logger)
 {
     private readonly string _masterKey = "MASTERKEY";
 

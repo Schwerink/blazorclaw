@@ -88,6 +88,7 @@ builder.Services.TryAddScoped<VariableResolverHelper>();
 
 builder.Services.Configure<JsonVaultOptions>(builder.Configuration.GetSection(JsonVaultOptions.Section));
 builder.Services.Configure<BitwardenOptions>(builder.Configuration.GetSection(BitwardenOptions.Section));
+builder.Services.TryAddScoped<SystemJsonVaultProvider>();
 builder.Services.TryAddScoped<JsonVaultProvider>();
 builder.Services.TryAddScoped<BitwardenVaultProvider>();
 builder.Services.TryAddScoped<DbUserApiKeyVaultProvider>();
