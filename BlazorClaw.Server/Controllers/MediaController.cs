@@ -11,8 +11,8 @@ public class MediaController(PathHelper pathHelper) : ControllerBase
     [HttpGet("/uploads/{fileName}")]
     public async Task<ActionResult> GetMediaFile(string fileName)
     {
-        var t = await pathHelper.GetMediaFileAsync(fileName);
+        var t = pathHelper.GetMediaFile(fileName);
         if (t == null) return NotFound();
-        return File(t.Item1, t.Item2);
+        return File(t.GetStream(), t.MimeType, t.FileName, true);
     }
 }

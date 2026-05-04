@@ -42,22 +42,15 @@ namespace BlazorClaw.Core.Services
             return path;
         }
 
-        public async Task<Tuple<Stream, string>?> GetMediaFileAsync(string fileName)
+        public  MediaFile? GetMediaFile(string fileName)
         {
-            if (!Guid.TryParse(Path.GetFileNameWithoutExtension(fileName), out _)) return null;
+            var filenameOnly = Path.GetFileNameWithoutExtension(fileName);
+            if ((filenameOnly?.Length ?? 0) < 36) return null;
+            if (!Guid.TryParse(filenameOnly![..36], out _)) return null;
+
             var file = Path.Combine(GetMediaFolder(), Path.GetFileName(fileName));
             if (!System.IO.File.Exists(file)) return null;
-            Stream strm = File.OpenRead(file);
-            var ct = Mimetype.GetMimeTypeFromExtension(file);
-            if (string.IsNullOrWhiteSpace(ct))
-            {
-                var buff = new byte[1024];
-                strm.Read(buff, 0, buff.Length);
-                strm.Seek(0, SeekOrigin.Begin);
-                ct = Mimetype.DetectMimeType(buff);
-            }
-            if (string.IsNullOrWhiteSpace(ct)) ct = null;
-            return Tuple.Create(strm, ct ?? Mimetype.Binary);
+            return new(file);
         }
 
 
@@ -89,7 +82,8 @@ namespace BlazorClaw.Core.Services
 
                     var ext = Path.GetExtension(uri.AbsolutePath);
                     if (string.IsNullOrWhiteSpace(ext)) ext = "";
-                    var filename = Path.Combine(GetMediaFolder(), $"{Guid.NewGuid()}{ext}");
+                    var filenameBase = Path.GetFileNameWithoutExtension(uri.AbsolutePath);
+                    var filename = Path.Combine(GetMediaFolder(), $"{Guid.NewGuid()}--{filenameBase}{ext}");
 
                     using var strm = await httpClient.GetStreamAsync(uri);
                     using (var fStrm = File.OpenWrite(filename))
@@ -131,12 +125,47 @@ namespace BlazorClaw.Core.Services
         {
             if (tuple == null) return null;
             var ext = Mimetype.GetExtensionFromMimeType(tuple.Item2);
+            if (string.IsNullOrWhiteSpace(ext) && tuple.Item1.CanSeek)
+            {
+                var mime = Mimetype.DetectMimeType(tuple.Item1);
+                if (!string.IsNullOrWhiteSpace(mime)) ext = Mimetype.GetExtensionFromMimeType(mime);
+            }
+            if (string.IsNullOrWhiteSpace(ext)) ext = ".dat";
             var filename = Path.Combine(GetMediaFolder(), $"{Guid.NewGuid()}{ext}");
 
             using var s = tuple.Item1;
             using var fs = File.OpenWrite(filename);
             await s.CopyToAsync(fs);
             return filename;
+        }
+    }
+
+    public class MediaFile
+    {
+        public string FileName { get; set; } = string.Empty;
+        public string MimeType { get; set; }
+        public string FullPath { get; set; }
+
+        private Stream? data = null;
+
+        public MediaFile(string fullpath)
+        {
+            FullPath = fullpath;
+            FileName = Path.GetFileName(fullpath);
+            MimeType = Mimetype.GetMimeTypeFromExtension(FileName) ?? Mimetype.Binary;
+            if (FileName.Length > 39)
+            {
+                if (FileName[36] == '-' && FileName[37] == '-')
+                {
+                    FileName = FileName[38..];
+                }
+            }
+        }
+
+        public Stream GetStream()
+        {
+            data = File.OpenRead(FullPath);
+            return data;
         }
     }
 }

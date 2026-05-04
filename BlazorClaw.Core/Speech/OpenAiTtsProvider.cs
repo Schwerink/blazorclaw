@@ -104,9 +104,9 @@ namespace BlazorClaw.Core.Speech
         public async Task<string?> SpeechToTextAsync(string data)
         {
             data = await pathHelper.SaveMediaFileAsync(data) ?? data;
-            var strm = await pathHelper.GetMediaFileAsync(data);
+            var strm = pathHelper.GetMediaFile(data);
             if (strm == null) return null;
-            return await SpeechToTextAsync(strm.Item1, strm.Item2);
+            return await SpeechToTextAsync(strm.GetStream(), strm.MimeType);
         }
     }
 }

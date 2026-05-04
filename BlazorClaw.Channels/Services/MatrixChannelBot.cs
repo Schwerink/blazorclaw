@@ -29,17 +29,18 @@ namespace BlazorClaw.Channels.Services
                 if (item is UriContent uri)
                 {
                     var uriStr = uri.Uri.ToString();
-                    var filename = Path.GetFileName(uriStr);
-                    var data = await GetMediaFileAsync(uriStr);
-                    if (data == null) continue;
+                    var mInfo = pathHelper.GetMediaFile(uriStr);
+                    if (mInfo == null) continue;
+                    using var stream = mInfo.GetStream();
+                    var data = await stream.ReadToBytesAsync();
 
-                    else if (uri.MediaType.StartsWith("image/"))
+                    if (uri.MediaType.StartsWith("image/"))
                     {
-                        await Client.SendImageAsync(channelId.ChannelId, filename, data);
+                        await Client.SendImageAsync(channelId.ChannelId, mInfo.FileName, data);
                     }
                     else
                     {
-                        await Client.SendFileAsync(channelId.ChannelId, filename, data);
+                        await Client.SendFileAsync(channelId.ChannelId, mInfo.FileName, data);
                     }
                 }
             }
@@ -53,17 +54,6 @@ namespace BlazorClaw.Channels.Services
                     await Client.SendMessageAsync(channelId.ChannelId, item);
                 }
             }
-        }
-
-        protected async Task<byte[]?> GetMediaFileAsync(string url)
-        {
-            var t = await pathHelper.GetMediaFileAsync(url);
-            if (t != null)
-            {
-                using var ms = t.Item1;
-                return await ms.ReadToBytesAsync();
-            }
-            return null;
         }
 
         public override async Task StartAsync(CancellationToken cancellationToken = default)
@@ -121,7 +111,10 @@ namespace BlazorClaw.Channels.Services
                         else if (roomEvent is CreateRoomEvent crRoomEvent)
                         {
                             logger.LogInformation("Matrix received CreateRoom event in {RoomId}", crRoomEvent.RoomId);
-                            await client.JoinTrustedPrivateRoomAsync(crRoomEvent.RoomId);
+                            await client.LeaveRoomAsync(crRoomEvent.RoomId);
+
+                            var ret = await client.CreateTrustedPrivateRoomAsync([crRoomEvent.SenderUserId]);
+                            await client.SendMessageAsync(ret.RoomId, "Hallo");
                         }
                     }
                 }

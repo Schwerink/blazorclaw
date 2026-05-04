@@ -113,12 +113,12 @@
         }
         public static string? DetectMimeType(this Stream strm)
         {
-
             var list = GetMimeSignatures().ToList();
             var size = list.Max(o => o.Signature.Length);
             var data = new byte[size];
+            var pos = strm.Position;
             strm.Read(data, 0, size);
-            strm.Seek(0, SeekOrigin.Begin);
+            strm.Seek(pos, SeekOrigin.Begin);
 
             foreach (var item in list)
             {

@@ -86,8 +86,8 @@ namespace BlazorClaw.Server.Services
                     var file = await pathHelper.SaveMediaFileAsync(strm) ?? throw new Exception("Can't save media data");
                     var uri = pathHelper.GetMediaUrl(file);
                     var sst = cmdContext.Provider.GetRequiredService<ISpeechToTextProvider>();
-                    strm = await pathHelper.GetMediaFileAsync(file);
-                    var transText = await sst.SpeechToTextAsync(strm.Item1, strm.Item2);
+                    var info = pathHelper.GetMediaFile(file) ?? throw new Exception("Can't access saved media file");
+                    var transText = await sst.SpeechToTextAsync(info.GetStream(), info.MimeType);
 
                     var newMsg = new ChatMessage(ChatRole.User, $"[VOICE:{uri}] Transcription:\n{transText}") { CreatedAt = DateTimeOffset.UtcNow };
                     newMsg.Contents.Add(new UriContent(uri));

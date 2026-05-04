@@ -138,8 +138,8 @@ namespace BlazorClaw.Channels.Services
 
         protected async Task<InputFile> GetMediaFileAsync(string url)
         {
-            var t = await pathHelper.GetMediaFileAsync(url);
-            if (t != null) return t.Item1;
+            var t = pathHelper.GetMediaFile(url);
+            if (t != null) return InputFile.FromStream(t.GetStream(), t.FileName);
             return url;
         }
 

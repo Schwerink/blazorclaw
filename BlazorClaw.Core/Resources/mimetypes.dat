@@ -536,6 +536,7 @@ audio/midi	.mid
 audio/mp4	.mp4a
 audio/mpeg	.mp3 .mpga
 audio/ogg	.ogg .oga
+audio/opus	.ogg .oga
 audio/vnd.dece.audio	.uva
 audio/vnd.digital-winds	.eol
 audio/vnd.dra	.dra
