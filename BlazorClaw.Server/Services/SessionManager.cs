@@ -110,8 +110,8 @@ namespace BlazorClaw.Server.Services
                         await db.SaveChangesAsync().ConfigureAwait(false);
                     }
 
-                    await SetVFSAsync(state);
                     scope.ServiceProvider.GetRequiredService<SessionStateAccessor>().SetSessionState(state);
+                    await SetVFSAsync(state);
                     _sessions.TryAdd(sessionId, state);
                 }
             }
@@ -466,7 +466,7 @@ namespace BlazorClaw.Server.Services
             return null;
         }
 
-        private async Task SetVFSAsync(ChatSessionState sessionState)
+        private static async Task SetVFSAsync(ChatSessionState sessionState)
         {
             sessionState.VFS = await PathUtils.BuildVFSAsync(sessionState.Services);
         }
