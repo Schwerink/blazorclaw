@@ -393,9 +393,11 @@
         });
     }
 
-    private async Task JumpToBottom()
-    {
+    private void JumpToBottom()
+    {        InvokeAsync(async () =>
+        {
             await JS.InvokeVoidAsync("scrollIdToEnd", new object[] { "messages-container" }); 
+        });
     }
 
     private string RenderMarkdown(string markdown)
