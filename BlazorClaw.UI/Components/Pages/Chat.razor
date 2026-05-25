@@ -207,13 +207,15 @@
             <button class="send-btn" @onclick="SendMessage" disabled="@isLoading">
                 <i class="bi bi-send"></i>
             </button>
+            <button class="jump-btn" @onclick="JumpToBottom">
+                <i class="bi bi-arrow-down"></i>
+            </button>
         </div>
     </main>
 </div>
 
 @code {
-    [Parameter]
-    public Guid SessionId { get; set; }
+    [Parameter] public Guid SessionId { get; set; }
 
     private HubConnection? hubConnection;
     private List<ChatSession> sessions = [];
@@ -245,10 +247,7 @@
 
         // Setup SignalR
         hubConnection = new HubConnectionBuilder()
-            .WithUrl(Nav.ToAbsoluteUri("/chatHub"), options =>
-                {
-                    options.Headers.Add("Cookie", contextAccessor.HttpContext?.Request.Headers.Cookie.ToString() ?? string.Empty);
-                })
+            .WithUrl(Nav.ToAbsoluteUri("/chatHub"), options => { options.Headers.Add("Cookie", contextAccessor.HttpContext?.Request.Headers.Cookie.ToString() ?? string.Empty); })
             .WithAutomaticReconnect()
             .Build();
 
@@ -314,7 +313,7 @@
                 ScrollToBottom();
             }
         });
-
+        JumpToBottom();
         await hubConnection.StartAsync();
     }
 
@@ -346,12 +345,14 @@
             await hubConnection.InvokeAsync("LoadHistory", SessionId);
         }
     }
+
     private string Printable(object oj)
     {
-        if(oj is IDictionary<string,object?> dict)
+        if (oj is IDictionary<string, object?> dict)
             return string.Join("\n", dict.Select(kv => $"{kv.Key}: {kv.Value}"));
         return Newtonsoft.Json.JsonConvert.SerializeObject(oj, Newtonsoft.Json.Formatting.Indented);
     }
+
     private async Task SendMessage()
     {
         if (string.IsNullOrWhiteSpace(userInput) || isLoading) return;
@@ -389,6 +390,14 @@
         InvokeAsync(async () =>
         {
             await Task.Delay(50);
+            await JS.InvokeVoidAsync("scrollIdToEnd", new object[] { "messages-container" });
+        });
+    }
+
+    private void JumpToBottom()
+    {
+        InvokeAsync(async () =>
+        {
             await JS.InvokeVoidAsync("scrollIdToEnd", new object[] { "messages-container" });
         });
     }
