@@ -313,7 +313,6 @@
                 ScrollToBottom();
             }
         });
-        JumpToBottom();
         await hubConnection.StartAsync();
     }
 
@@ -394,12 +393,9 @@
         });
     }
 
-    private void JumpToBottom()
+    private async Task JumpToBottom()
     {
-        InvokeAsync(async () =>
-        {
-            await JS.InvokeVoidAsync("scrollIdToEnd", new object[] { "messages-container" });
-        });
+            await JS.InvokeVoidAsync("scrollIdToEnd", new object[] { "messages-container" }); 
     }
 
     private string RenderMarkdown(string markdown)
@@ -740,6 +736,20 @@
         color: #fff;
         cursor: pointer;
         transition: background 0.2s;
+    }
+
+    .jump-btn {
+        padding: 14px 20px;
+        background: #3a4045;
+        border: none;
+        border-radius: 12px;
+        color: #fff;
+        cursor: pointer;
+        transition: background 0.2s;
+    }
+
+    .jump-btn:hover {
+        background: #4a4e53;
     }
 
         .send-btn:hover:not(:disabled) {
